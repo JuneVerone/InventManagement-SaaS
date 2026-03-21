@@ -1,121 +1,96 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+// src/App.jsx
+//
+// Root component — the very top of the React component tree.
+// Every other component is a child of this one.
+// Its only job: set up React Router so URLs map to the right page.
+//
+// ── HOW REACT ROUTER WORKS ───────────────────────────────────────────────────
+//   Traditional website:
+//     Click a link → browser fetches a NEW HTML file from the server → full reload
+//
+//   React SPA (Single Page Application):
+//     Click a link → URL changes → React swaps components → NO page reload
+//     The browser never fetches a new HTML file after the first one.
+//     This makes navigation feel instant.
+//
+// ── KEY COMPONENTS ───────────────────────────────────────────────────────────
+//   <BrowserRouter>  wraps the whole app — enables routing via browser History API
+//   <Routes>         looks at the current URL and renders the FIRST matching <Route>
+//   <Route>          maps a URL path → component
+//   <Navigate>       immediately redirects to another path (no UI rendered)
+//
+// ── ROUTE MAP ────────────────────────────────────────────────────────────────
+//   /               → redirect to /dashboard
+//   /login          → Login page       (public)
+//   /register       → Register page    (public)
+//   /dashboard      → Dashboard        (protected — any logged-in user)
+//   /unauthorized   → 403 page         (shown when role check fails)
+//   *               → 404 page         (any URL that doesn't match above)
+//
+// ── HOW PROTECTION WORKS ─────────────────────────────────────────────────────
+//   1. User visits /dashboard
+//   2. <ProtectedRoute> checks Zustand store
+//   3a. isLoading=true  → show spinner (session restore in progress)
+//   3b. no accessToken  → <Navigate to="/login"> (not logged in)
+//   3c. wrong role      → <Navigate to="/unauthorized">
+//   3d. all good        → render <Dashboard />
 
-function App() {
-  const [count, setCount] = useState(0)
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import ProtectedRoute  from './components/layout/ProtectedRoute'
+import Login           from './pages/Login'
+import Register        from './pages/Register'
+import Dashboard       from './pages/Dashboard'
+import Unauthorized    from './pages/Unauthorized'
+import NotFound        from './pages/NotFound'
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+const App = () => (
+  // BrowserRouter MUST wrap everything that uses routing.
+  // It provides the routing context that <Routes>, <Link>, useNavigate all depend on.
+  <BrowserRouter>
+    <Routes>
 
-      <div className="ticks"></div>
+      {/* Root → dashboard */}
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      {/* ── Public pages (no auth required) ──────────────────────────────── */}
+      <Route path="/login"    element={<Login />} />
+      <Route path="/register" element={<Register />} />
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
-}
+      {/* ── Protected pages (must be logged in) ──────────────────────────── */}
+
+      {/* Any authenticated user */}
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      {/*
+        ── Adding more protected routes in later phases ──────────────────────
+
+        Any authenticated user:
+        <Route path="/inventory"
+          element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
+
+        Staff or above (not VIEWER):
+        <Route path="/purchase-orders"
+          element={<ProtectedRoute minRole="STAFF"><PurchaseOrders /></ProtectedRoute>} />
+
+        Admins only:
+        <Route path="/settings/users"
+          element={<ProtectedRoute requiredRole="ADMIN"><UserSettings /></ProtectedRoute>} />
+      */}
+
+      {/* ── Utility pages ─────────────────────────────────────────────────── */}
+      <Route path="/unauthorized" element={<Unauthorized />} />
+      <Route path="*"             element={<NotFound />} />
+      {/* path="*" catches EVERY unmatched URL — must be last */}
+
+    </Routes>
+  </BrowserRouter>
+)
 
 export default App
