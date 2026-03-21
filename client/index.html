@@ -1,13 +1,25 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>client</title>
+    <title>Inventory SaaS</title>
+    <!--
+      This is the ONE AND ONLY HTML file in the entire React app.
+      It never changes after the initial load.
+
+      React mounts inside <div id="root"> below and takes over completely.
+      Every "page" you navigate to is just React swapping components —
+      the browser never fetches a new HTML file from the server.
+      This is what makes it a Single Page Application (SPA).
+    -->
   </head>
   <body>
     <div id="root"></div>
+    <!--
+      type="module" = modern ES module JavaScript.
+      Vite processes this file and injects the compiled bundle here.
+    -->
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
