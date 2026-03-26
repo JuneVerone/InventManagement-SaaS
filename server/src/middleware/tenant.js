@@ -25,27 +25,14 @@ import prisma from '../config/db.js'
 
 export const resolveTenant = async (req, res, next) => {
   try {
-    // req.user.orgId was set by the authenticate middleware
     const org = await prisma.organization.findUnique({
-      where: { id: req.user.orgId },
+      where:  { id: req.user.orgId },
       select: { id: true, name: true, slug: true, plan: true },
     })
-
-    if (!org) {
-      return res.status(404).json({
-        success: false,
-        message: 'Organization not found.',
-      })
-    }
-
-    // Attach to request — all downstream controllers use req.org.id
+    if (!org) return res.status(404).json({ success: false, message: 'Organization not found.' })
     req.org = org
     next()
-
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to resolve organization.',
-    })
+  } catch {
+    res.status(500).json({ success: false, message: 'Failed to resolve organization.' })
   }
 }
