@@ -4,8 +4,6 @@
 // Notice EVERY query has orgId in the where clause.
 // That single constraint is what makes multi-tenancy work.
 
-import prisma from '../../config/db.js'
-
 // Get all categories for the current org
 import prisma from '../../config/db.js'
 
