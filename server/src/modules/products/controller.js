@@ -1,14 +1,5 @@
-// src/modules/products/product.controller.js
-import { z }    from 'zod'
-import {
-  getProductsService,
-  getProductByIdService,
-  createProductService,
-  updateProductService,
-  deleteProductService,
-} from './product.service.js'
-
-// ── Validation schemas ────────────────────────────────────────────────────────
+import { z } from 'zod'
+import { getProductsService, getProductByIdService, createProductService, updateProductService, deleteProductService } from './product.service.js'
 
 const createProductSchema = z.object({
   name:         z.string().min(1, 'Name is required').max(200),
@@ -19,7 +10,6 @@ const createProductSchema = z.object({
   reorderAt:    z.coerce.number().int().min(0).optional(),
   imageUrl:     z.string().url().optional().or(z.literal('')),
   categoryId:   z.string().optional(),
-  // Array of { warehouseId, quantity } for initial stock
   initialStock: z.array(z.object({
     warehouseId: z.string().min(1),
     quantity:    z.coerce.number().int().min(0),
@@ -27,14 +17,8 @@ const createProductSchema = z.object({
 })
 
 const updateProductSchema = createProductSchema.partial().omit({ initialStock: true })
+const formatErrors = (zodError) => zodError.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
 
-// Helper: format Zod errors consistently
-const formatErrors = (zodError) =>
-  zodError.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
-
-// ── Controllers ───────────────────────────────────────────────────────────────
-
-// GET /products?page=1&limit=20&search=widget&categoryId=abc
 export const getProducts = async (req, res) => {
   try {
     const { page, limit, search, categoryId } = req.query
@@ -50,7 +34,6 @@ export const getProducts = async (req, res) => {
   }
 }
 
-// GET /products/:id
 export const getProduct = async (req, res) => {
   try {
     const product = await getProductByIdService(req.org.id, req.params.id)
@@ -60,41 +43,30 @@ export const getProduct = async (req, res) => {
   }
 }
 
-// POST /products
 export const createProduct = async (req, res) => {
   try {
     const result = createProductSchema.safeParse(req.body)
-    if (!result.success) {
-      return res.status(400).json({ success: false, message: 'Validation failed.', errors: formatErrors(result.error) })
-    }
+    if (!result.success) return res.status(400).json({ success: false, message: 'Validation failed.', errors: formatErrors(result.error) })
     const product = await createProductService(req.org.id, result.data)
     res.status(201).json({ success: true, data: product })
   } catch (err) {
-    if (err.code === 'P2002') {
-      return res.status(409).json({ success: false, message: 'A product with that SKU already exists.' })
-    }
+    if (err.code === 'P2002') return res.status(409).json({ success: false, message: 'A product with that SKU already exists.' })
     res.status(err.statusCode || 500).json({ success: false, message: err.message })
   }
 }
 
-// PATCH /products/:id
 export const updateProduct = async (req, res) => {
   try {
     const result = updateProductSchema.safeParse(req.body)
-    if (!result.success) {
-      return res.status(400).json({ success: false, message: 'Validation failed.', errors: formatErrors(result.error) })
-    }
+    if (!result.success) return res.status(400).json({ success: false, message: 'Validation failed.', errors: formatErrors(result.error) })
     const product = await updateProductService(req.org.id, req.params.id, result.data)
     res.json({ success: true, data: product })
   } catch (err) {
-    if (err.code === 'P2002') {
-      return res.status(409).json({ success: false, message: 'A product with that SKU already exists.' })
-    }
+    if (err.code === 'P2002') return res.status(409).json({ success: false, message: 'A product with that SKU already exists.' })
     res.status(err.statusCode || 500).json({ success: false, message: err.message })
   }
 }
 
-// DELETE /products/:id  (soft delete)
 export const deleteProduct = async (req, res) => {
   try {
     await deleteProductService(req.org.id, req.params.id)
