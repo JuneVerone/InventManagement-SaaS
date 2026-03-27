@@ -1,10 +1,6 @@
 // src/modules/categories/category.controller.js
 import { z } from 'zod'
-import {
-  getCategoriesService,
-  createCategoryService,
-  deleteCategoryService,
-} from './category.service.js'
+import { getCategoriesService, createCategoryService, deleteCategoryService } from './category.service.js'
 
 const categorySchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
@@ -32,10 +28,7 @@ export const createCategory = async (req, res) => {
     const category = await createCategoryService(req.org.id, result.data)
     res.status(201).json({ success: true, data: category })
   } catch (err) {
-    // Unique constraint violation = duplicate name
-    if (err.code === 'P2002') {
-      return res.status(409).json({ success: false, message: 'A category with that name already exists.' })
-    }
+    if (err.code === 'P2002') return res.status(409).json({ success: false, message: 'A category with that name already exists.' })
     res.status(err.statusCode || 500).json({ success: false, message: err.message })
   }
 }
