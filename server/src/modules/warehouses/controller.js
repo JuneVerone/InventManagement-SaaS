@@ -1,10 +1,5 @@
-// src/modules/warehouses/warehouse.controller.js
 import { z } from 'zod'
-import {
-  getWarehousesService,
-  createWarehouseService,
-  deleteWarehouseService,
-} from './warehouse.service.js'
+import { getWarehousesService, createWarehouseService, deleteWarehouseService } from './warehouse.service.js'
 
 const warehouseSchema = z.object({
   name:     z.string().min(1, 'Name is required').max(100),
@@ -33,9 +28,7 @@ export const createWarehouse = async (req, res) => {
     const warehouse = await createWarehouseService(req.org.id, result.data)
     res.status(201).json({ success: true, data: warehouse })
   } catch (err) {
-    if (err.code === 'P2002') {
-      return res.status(409).json({ success: false, message: 'A warehouse with that name already exists.' })
-    }
+    if (err.code === 'P2002') return res.status(409).json({ success: false, message: 'A warehouse with that name already exists.' })
     res.status(err.statusCode || 500).json({ success: false, message: err.message })
   }
 }
