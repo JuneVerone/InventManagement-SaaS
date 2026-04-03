@@ -64,20 +64,17 @@ export const useAuth = () => {
   //            refreshTokenApi() uses only the cookie.
 
   useEffect(() => {
-    const restoreSession = async () => {
-      setLoading(true)
-      try {
-        const data = await refreshTokenApi()  // uses the cookie, not a token
-        setAuth(data)                          // { accessToken, user, org, role }
-      } catch {
-        clearAuth()  // cookie missing or expired — must log in manually
-      }
-      // setLoading(false) is handled inside setAuth and clearAuth
+  const restoreSession = async () => {
+    setLoading(true)
+    try {
+      const data = await refreshTokenApi()
+      setAuth(data)
+    } catch {
+      clearAuth()
     }
-
-    restoreSession()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }
+  restoreSession()
+}, [])
   // Empty [] = run once on mount only.
   // We exclude setAuth/clearAuth/setLoading from deps intentionally —
   // they are stable store actions and adding them causes unnecessary re-runs.
