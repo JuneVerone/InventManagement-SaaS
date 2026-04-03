@@ -65,10 +65,18 @@ export const useAuth = () => {
 
   useEffect(() => {
   const restoreSession = async () => {
-    setLoading(true)
     try {
-      const data = await refreshTokenApi()
-      setAuth(data)
+      const response = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setAuth(data.data)
+      } else {
+        clearAuth()
+      }
     } catch {
       clearAuth()
     }
