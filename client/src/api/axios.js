@@ -36,7 +36,7 @@ import { useAuthStore } from '../store/authStore'
 
 // ── Create the custom instance ───────────────────────────────────────────────
 const api = axios.create({
-  baseURL:          import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
+  baseURL: '/api',
   withCredentials:  true,  // sends cookies (the httpOnly refresh token) with EVERY request
 })
 
