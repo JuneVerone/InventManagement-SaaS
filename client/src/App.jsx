@@ -36,59 +36,32 @@
 //   3d. all good        → render <Dashboard />
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import ProtectedRoute  from './components/layout/ProtectedRoute'
-import Login           from './pages/Login'
-import Register        from './pages/Register'
-import Dashboard       from './pages/Dashboard'
-import Unauthorized    from './pages/Unauthorized'
-import NotFound        from './pages/NotFound'
+import ProtectedRoute from './components/layout/ProtectedRoute'
+import Login          from './pages/Login'
+import Register       from './pages/Register'
+import Dashboard      from './pages/Dashboard'
+import Inventory      from './pages/Inventory'
+import Unauthorized   from './pages/Unauthorized'
+import NotFound       from './pages/NotFound'
 
 const App = () => (
-  // BrowserRouter MUST wrap everything that uses routing.
-  // It provides the routing context that <Routes>, <Link>, useNavigate all depend on.
   <BrowserRouter>
     <Routes>
-
-      {/* Root → dashboard */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-      {/* ── Public pages (no auth required) ──────────────────────────────── */}
       <Route path="/login"    element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      {/* ── Protected pages (must be logged in) ──────────────────────────── */}
+      <Route path="/dashboard" element={
+        <ProtectedRoute><Dashboard /></ProtectedRoute>
+      } />
 
-      {/* Any authenticated user */}
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/inventory" element={
+        <ProtectedRoute><Inventory /></ProtectedRoute>
+      } />
 
-      {/*
-        ── Adding more protected routes in later phases ──────────────────────
-
-        Any authenticated user:
-        <Route path="/inventory"
-          element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
-
-        Staff or above (not VIEWER):
-        <Route path="/purchase-orders"
-          element={<ProtectedRoute minRole="STAFF"><PurchaseOrders /></ProtectedRoute>} />
-
-        Admins only:
-        <Route path="/settings/users"
-          element={<ProtectedRoute requiredRole="ADMIN"><UserSettings /></ProtectedRoute>} />
-      */}
-
-      {/* ── Utility pages ─────────────────────────────────────────────────── */}
       <Route path="/unauthorized" element={<Unauthorized />} />
       <Route path="*"             element={<NotFound />} />
-      {/* path="*" catches EVERY unmatched URL — must be last */}
-
     </Routes>
   </BrowserRouter>
 )
