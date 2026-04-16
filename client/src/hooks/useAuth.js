@@ -22,90 +22,74 @@
 //   error            — message from the last failed action (null if none)
 //   user, org, role  — current auth data from the store
 //   permission bools — isAdmin, isAtLeastStaff, isViewer
-
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate }                       from 'react-router-dom'
 import { useAuthStore }                      from '../store/authStore'
-import { loginApi, registerApi, logoutApi, refreshTokenApi } from '../api/auth'
+import { loginApi, registerApi, logoutApi }  from '../api/auth'
 
 export const useAuth = () => {
   const navigate = useNavigate()
 
-  // ── Read data from the global store ────────────────────────────────────────
-  // We read each field individually so the component only re-renders when
-  // the specific field it cares about changes (Zustand's selective re-render).
   const accessToken    = useAuthStore(s => s.accessToken)
   const user           = useAuthStore(s => s.user)
   const org            = useAuthStore(s => s.org)
   const role           = useAuthStore(s => s.role)
   const isStoreLoading = useAuthStore(s => s.isLoading)
 
-  // ── Read store actions (stable references — never cause re-renders) ─────────
   const setAuth    = useAuthStore(s => s.setAuth)
   const clearAuth  = useAuthStore(s => s.clearAuth)
   const setLoading = useAuthStore(s => s.setLoading)
 
-  // ── Local UI state — only for the CURRENT action's feedback ────────────────
   const [isActionLoading, setIsActionLoading] = useState(false)
   const [error,           setError          ] = useState(null)
 
-  // ── SESSION RESTORE ON PAGE LOAD ────────────────────────────────────────────
-  //
-  // Problem:  The accessToken lives in memory. A browser refresh wipes memory.
-  //           Without this, every refresh would log the user out.
-  //
-  // Solution: On mount, call POST /auth/refresh.
-  //           The httpOnly refresh-token cookie is sent automatically.
-  //           If valid → get a new accessToken → user is silently logged back in.
-  //           If expired → clearAuth() → ProtectedRoute redirects to /login.
-  //
-  // Important: We call refreshTokenApi() NOT getMeApi().
-  //            getMeApi() requires an access token — we don't have one yet on load.
-  //            refreshTokenApi() uses only the cookie.
-
+  // ── SESSION RESTORE ───────────────────────────────────────────────────────
+  // Uses plain fetch() instead of axios to avoid any axios configuration issues.
+  // The browser automatically sends the httpOnly refreshToken cookie with the request
+  // because credentials: 'include' is set.
   useEffect(() => {
-  const restoreSession = async () => {
-    try {
-      const response = await fetch('/api/auth/refresh', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setAuth(data.data)
-      } else {
+    const restoreSession = async () => {
+      setLoading(true)
+      try {
+        const response = await fetch('/api/auth/refresh', {
+          method:      'POST',
+          credentials: 'include',
+          headers:     { 'Content-Type': 'application/json' },
+        })
+
+        if (response.ok) {
+          const json = await response.json()
+          // json = { success: true, data: { accessToken, user, org, role } }
+          setAuth(json.data)
+        } else {
+          // 401 = no valid cookie — user must log in
+          clearAuth()
+        }
+      } catch {
+        // Network error or server down
         clearAuth()
       }
-    } catch {
-      clearAuth()
     }
-  }
-  restoreSession()
-}, [])
-  // Empty [] = run once on mount only.
-  // We exclude setAuth/clearAuth/setLoading from deps intentionally —
-  // they are stable store actions and adding them causes unnecessary re-runs.
 
-  // ── LOGIN ───────────────────────────────────────────────────────────────────
-  // useCallback so the function reference is stable — prevents unnecessary
-  // re-renders if this function is passed as a prop to child components.
+    restoreSession()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── LOGIN ─────────────────────────────────────────────────────────────────
   const login = useCallback(async (credentials) => {
     setIsActionLoading(true)
     setError(null)
     try {
-      const data = await loginApi(credentials)  // { accessToken, user, org, role }
+      const data = await loginApi(credentials)
       setAuth(data)
       navigate('/dashboard')
     } catch (err) {
-      // err.response.data.message is the message from our Express error handler
       setError(err.response?.data?.message || 'Login failed. Please try again.')
     } finally {
-      setIsActionLoading(false)  // always runs, even if an error was thrown
+      setIsActionLoading(false)
     }
   }, [navigate, setAuth])
 
-  // ── REGISTER ────────────────────────────────────────────────────────────────
+  // ── REGISTER ──────────────────────────────────────────────────────────────
   const register = useCallback(async (formData) => {
     setIsActionLoading(true)
     setError(null)
@@ -120,45 +104,31 @@ export const useAuth = () => {
     }
   }, [navigate, setAuth])
 
-  // ── LOGOUT ──────────────────────────────────────────────────────────────────
+  // ── LOGOUT ────────────────────────────────────────────────────────────────
   const logout = useCallback(async () => {
     try {
-      await logoutApi()  // tells server to clear the httpOnly cookie
+      await logoutApi()
     } finally {
-      // Even if the server call fails (network offline), always clear local state
-      // so the user isn't stuck with a broken session
       clearAuth()
       navigate('/login')
     }
   }, [navigate, clearAuth])
 
-  // ── CLEAR ERROR ─────────────────────────────────────────────────────────────
-  // Called by forms when the user starts typing again after an error
   const clearError = useCallback(() => setError(null), [])
 
-  // ── Return everything components need ───────────────────────────────────────
   return {
-    // Auth data (from store)
     user,
     org,
     role,
-    isAuthenticated: !!accessToken,
-
-    // Loading: true during EITHER the initial session restore OR an action
-    isLoading: isStoreLoading || isActionLoading,
-
-    // Error from the last failed action (null if no error)
+    isAuthenticated:  !!accessToken,
+    isLoading:        isStoreLoading || isActionLoading,
     error,
     clearError,
-
-    // Actions
     login,
     register,
     logout,
-
-    // Permission shortcuts — derived from role
-    isAdmin:        role === 'ADMIN',
-    isAtLeastStaff: role === 'ADMIN' || role === 'STAFF',
-    isViewer:       role === 'VIEWER',
+    isAdmin:          role === 'ADMIN',
+    isAtLeastStaff:   role === 'ADMIN' || role === 'STAFF',
+    isViewer:         role === 'VIEWER',
   }
 }
