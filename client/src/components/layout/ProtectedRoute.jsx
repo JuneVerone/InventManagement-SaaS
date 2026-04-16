@@ -24,11 +24,10 @@
 //   useAuth, it would trigger a SECOND restore attempt every time a protected
 //   page renders. We read the store directly to avoid that duplication.
 //   The one restore happens in useAuth inside a page that calls it.
+import { useEffect, useState } from 'react'
+import { Navigate }            from 'react-router-dom'
+import { useAuthStore }        from '../../store/authStore'
 
-import { Navigate }     from 'react-router-dom'
-import { useAuthStore } from '../../store/authStore'
-
-// Numeric levels let us do "at least STAFF" comparisons
 const ROLE_LEVEL = { VIEWER: 0, STAFF: 1, ADMIN: 2 }
 
 const ProtectedRoute = ({ children, requiredRole = null, minRole = null }) => {
@@ -36,23 +35,22 @@ const ProtectedRoute = ({ children, requiredRole = null, minRole = null }) => {
   const role        = useAuthStore(s => s.role)
   const isLoading   = useAuthStore(s => s.isLoading)
 
-  // ① Still restoring session — show spinner, DO NOT redirect yet.
-  //
-  //   WHY THIS MATTERS:
-  //   When the page loads, isLoading starts as `true` and accessToken is null.
-  //   Without this check, the guard would see null token and redirect to /login
-  //   BEFORE the session restore has a chance to run — even for logged-in users.
-  //   This spinner buys the 100–200ms needed for the restore to complete.
-  if (isLoading) {
+  // Safety timeout — if loading takes more than 5 seconds, stop waiting
+  // This prevents infinite spinner if the refresh endpoint never responds
+  const [timedOut, setTimedOut] = useState(false)
+
+  useEffect(() => {
+    if (!isLoading) { setTimedOut(false); return }
+    const timer = setTimeout(() => setTimedOut(true), 5000)
+    return () => clearTimeout(timer)
+  }, [isLoading])
+
+  // Still loading and not timed out — show spinner
+  if (isLoading && !timedOut) {
     return (
       <div style={{
-        display:        'flex',
-        alignItems:     'center',
-        justifyContent: 'center',
-        height:         '100vh',
-        gap:            '10px',
-        color:          '#64748b',
-        fontSize:       '14px',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        height: '100vh', gap: '10px', color: '#64748b', fontSize: '14px',
       }}>
         <div style={spinnerStyle} />
         Restoring session…
@@ -60,44 +58,34 @@ const ProtectedRoute = ({ children, requiredRole = null, minRole = null }) => {
     )
   }
 
-  // ② Not authenticated → send to login
-  // `replace` removes the current URL from browser history so the back button
-  // doesn't send the user back to the protected page after they log in.
+  // Not authenticated (or timed out) → go to login
   if (!accessToken) {
     return <Navigate to="/login" replace />
   }
 
-  // ③ Exact role required — must be specifically that role
+  // Exact role check
   if (requiredRole && role !== requiredRole) {
     return <Navigate to="/unauthorized" replace />
   }
 
-  // ④ Minimum role required — user level must be >= the minimum
+  // Minimum role check
   if (minRole) {
     const userLevel = ROLE_LEVEL[role]    ?? -1
     const minLevel  = ROLE_LEVEL[minRole] ?? 0
-    if (userLevel < minLevel) {
-      return <Navigate to="/unauthorized" replace />
-    }
+    if (userLevel < minLevel) return <Navigate to="/unauthorized" replace />
   }
 
-  // ⑤ All checks passed — render the actual page
   return children
 }
 
-// CSS spinner via border trick:
-// Full border = grey ring. Top border only = coloured arc.
-// CSS animation rotates it continuously → spinning effect.
 const spinnerStyle = {
-  width:          '18px',
-  height:         '18px',
-  border:         '2px solid #e2e8f0',
+  width: '18px', height: '18px',
+  border: '2px solid #e2e8f0',
   borderTopColor: '#3b82f6',
-  borderRadius:   '50%',
-  animation:      'spin 0.7s linear infinite',
+  borderRadius: '50%',
+  animation: 'spin 0.7s linear infinite',
 }
 
-// Inject the @keyframes rule once into <head> — no separate CSS file needed
 const styleEl = document.createElement('style')
 styleEl.textContent = '@keyframes spin { to { transform: rotate(360deg); } }'
 document.head.appendChild(styleEl)
