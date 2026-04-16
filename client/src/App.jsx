@@ -35,6 +35,7 @@
 //   3c. wrong role      → <Navigate to="/unauthorized">
 //   3d. all good        → render <Dashboard />
 
+
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import ProtectedRoute from './components/layout/ProtectedRoute'
 import Login          from './pages/Login'
