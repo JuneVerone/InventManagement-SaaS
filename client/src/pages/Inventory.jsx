@@ -1,5 +1,3 @@
-// src/pages/Inventory.jsx
-//
 // Full product catalog page with:
 //   - Product table (name, SKU, category, stock, price)
 //   - Search by name or SKU
