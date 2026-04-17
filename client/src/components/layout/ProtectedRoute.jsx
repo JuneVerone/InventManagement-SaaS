@@ -91,3 +91,4 @@ styleEl.textContent = '@keyframes spin { to { transform: rotate(360deg); } }'
 document.head.appendChild(styleEl)
 
 export default ProtectedRoute
+
