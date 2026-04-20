@@ -22,10 +22,12 @@
 //   error            — message from the last failed action (null if none)
 //   user, org, role  — current auth data from the store
 //   permission bools — isAdmin, isAtLeastStaff, isViewer
-import { useState, useEffect, useCallback } from 'react'
-import { useNavigate }                       from 'react-router-dom'
-import { useAuthStore }                      from '../store/authStore'
-import { loginApi, registerApi, logoutApi }  from '../api/auth'
+
+
+import { useState, useCallback }  from 'react'
+import { useNavigate }            from 'react-router-dom'
+import { useAuthStore }           from '../store/authStore'
+import { loginApi, registerApi, logoutApi } from '../api/auth'
 
 export const useAuth = () => {
   const navigate = useNavigate()
@@ -36,45 +38,12 @@ export const useAuth = () => {
   const role           = useAuthStore(s => s.role)
   const isStoreLoading = useAuthStore(s => s.isLoading)
 
-  const setAuth    = useAuthStore(s => s.setAuth)
-  const clearAuth  = useAuthStore(s => s.clearAuth)
-  const setLoading = useAuthStore(s => s.setLoading)
+  const setAuth   = useAuthStore(s => s.setAuth)
+  const clearAuth = useAuthStore(s => s.clearAuth)
 
   const [isActionLoading, setIsActionLoading] = useState(false)
   const [error,           setError          ] = useState(null)
 
-  // ── SESSION RESTORE ───────────────────────────────────────────────────────
-  // Uses plain fetch() instead of axios to avoid any axios configuration issues.
-  // The browser automatically sends the httpOnly refreshToken cookie with the request
-  // because credentials: 'include' is set.
-  useEffect(() => {
-    const restoreSession = async () => {
-      setLoading(true)
-      try {
-        const response = await fetch('/api/auth/refresh', {
-          method:      'POST',
-          credentials: 'include',
-          headers:     { 'Content-Type': 'application/json' },
-        })
-
-        if (response.ok) {
-          const json = await response.json()
-          // json = { success: true, data: { accessToken, user, org, role } }
-          setAuth(json.data)
-        } else {
-          // 401 = no valid cookie — user must log in
-          clearAuth()
-        }
-      } catch {
-        // Network error or server down
-        clearAuth()
-      }
-    }
-
-    restoreSession()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── LOGIN ─────────────────────────────────────────────────────────────────
   const login = useCallback(async (credentials) => {
     setIsActionLoading(true)
     setError(null)
@@ -89,7 +58,6 @@ export const useAuth = () => {
     }
   }, [navigate, setAuth])
 
-  // ── REGISTER ──────────────────────────────────────────────────────────────
   const register = useCallback(async (formData) => {
     setIsActionLoading(true)
     setError(null)
@@ -104,7 +72,6 @@ export const useAuth = () => {
     }
   }, [navigate, setAuth])
 
-  // ── LOGOUT ────────────────────────────────────────────────────────────────
   const logout = useCallback(async () => {
     try {
       await logoutApi()
@@ -117,16 +84,11 @@ export const useAuth = () => {
   const clearError = useCallback(() => setError(null), [])
 
   return {
-    user,
-    org,
-    role,
+    user, org, role,
     isAuthenticated:  !!accessToken,
     isLoading:        isStoreLoading || isActionLoading,
-    error,
-    clearError,
-    login,
-    register,
-    logout,
+    error, clearError,
+    login, register, logout,
     isAdmin:          role === 'ADMIN',
     isAtLeastStaff:   role === 'ADMIN' || role === 'STAFF',
     isViewer:         role === 'VIEWER',
