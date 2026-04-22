@@ -19,7 +19,7 @@ export const getProductsService = async (orgId, { page = 1, limit = 20, search, 
     prisma.product.findMany({
       where,
       skip,
-      take: limit,
+      take:    limit,
       orderBy: { createdAt: 'desc' },
       include: {
         category:    { select: { id: true, name: true } },
@@ -34,7 +34,7 @@ export const getProductsService = async (orgId, { page = 1, limit = 20, search, 
   }))
 
   return {
-    products: productsWithTotal,
+    products:   productsWithTotal,
     pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
   }
 }
@@ -107,6 +107,37 @@ export const updateProductService = async (orgId, productId, data) => {
       ...(imageUrl    !== undefined && { imageUrl }),
       ...(categoryId  !== undefined && { categoryId: categoryId || null }),
     },
+    include: {
+      category:    { select: { id: true, name: true } },
+      stockLevels: { include: { warehouse: { select: { id: true, name: true } } } },
+    },
+  })
+}
+
+// ── NEW: Update stock levels for a product ────────────────────────────────────
+// stockLevels = [{ warehouseId, quantity }]
+// Uses upsert — creates the row if it doesn't exist, updates if it does
+export const updateStockService = async (orgId, productId, stockLevels) => {
+  // Verify product belongs to this org
+  const product = await prisma.product.findFirst({
+    where: { id: productId, orgId, deletedAt: null },
+  })
+  if (!product) throw Object.assign(new Error('Product not found.'), { statusCode: 404 })
+
+  // Upsert each stock level in a transaction
+  await prisma.$transaction(
+    stockLevels.map(({ warehouseId, quantity }) =>
+      prisma.stockLevel.upsert({
+        where:  { productId_warehouseId: { productId, warehouseId } },
+        create: { productId, warehouseId, quantity: parseInt(quantity) || 0 },
+        update: { quantity: parseInt(quantity) || 0 },
+      })
+    )
+  )
+
+  // Return updated product with new stock levels
+  return prisma.product.findUnique({
+    where:   { id: productId },
     include: {
       category:    { select: { id: true, name: true } },
       stockLevels: { include: { warehouse: { select: { id: true, name: true } } } },
